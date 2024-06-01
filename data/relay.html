@@ -1,0 +1,237 @@
+<!DOCtype html>
+<html>
+
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, user-scalable=no"/>
+    <title>LiveScope Control</title>
+    <style type="text/css">
+          
+          
+	.button {
+		background-color: #04AA6D;
+  		border: none;
+  		color: white;
+  		padding: 30px 64px;
+  		text-align: center;
+  		text-decoration: none;
+  		-webkit-user-select: none;
+  		display: inline-block;
+  		font-size: 16px;
+  		margin: 4px 2px;
+  		cursor: pointer;
+		}
+
+	/*______________________________________________________________________*/
+
+    </style>
+</head>
+
+<body>
+	
+<table>
+	<tr>
+		<th>.</th>
+	</tr>
+</table>
+
+<table>
+	<tr>
+		<th>.</th>
+	</tr>
+</table>
+
+<table>
+	<tr>
+		<th>.</th>
+	</tr>
+</table>
+
+<table>
+	<tr>
+		<th>.</th>
+	</tr>
+</table>
+
+<table>
+	<tr>
+		<th>.</th>
+	</tr>
+</table>
+
+<table>
+	<tr>
+		<th>.</th>
+	</tr>
+</table>
+
+<table>
+	<tr>
+		<th>.</th>
+	</tr>
+</table>
+
+<table>
+	<tr>
+		<th>.</th>
+	</tr>
+</table>
+
+<table>
+	<tr>
+		<th>.</th>
+	</tr>
+</table>
+
+
+
+<p>Direction Control</p>
+			
+	<input class="button" type="button" id="L" value="LEFT">
+	<input class="button" type="button" id="R" value="RIGHT">
+			
+<script type="text/javascript">
+	
+
+	window.addEventListener("load", addListeners); 
+		
+	touchStartI = function(e) 
+	{
+	console.log("#ID");
+	connection.send("#ID");
+	}
+		
+	touchEndI = function(e)
+	{
+	var lastTouchEnd = 0;
+	var now = (new Date()).getTime();
+	if (now - lastTouchEnd <= 300) 
+	{
+		event.preventDefault();
+	}
+		lastTouchEnd = now;
+		console.log("#IU");
+		connection.send("#IU");
+	}
+
+	touchStartL = function(e)
+	{
+		console.log("LN");
+		connection.send("LN");
+	}
+		
+	touchEndL = function(e)
+	{
+		console.log("LF");
+		connection.send("LF");
+	}
+
+	touchStartR = function(e)
+	{
+		console.log("RN");
+		connection.send("RN");
+	}
+		
+	touchEndR = function(e)
+	{
+		console.log("RF");
+		connection.send("RF");
+	}
+
+	function addListeners()
+	{
+		document.getElementById('L').addEventListener("touchstart", touchStartL);
+		document.getElementById('L').addEventListener("touchend", touchEndL);
+
+		document.getElementById('R').addEventListener("touchstart", touchStartR);
+		document.getElementById('R').addEventListener("touchend", touchEndR);
+		
+	}
+	// This code is based on https://github.com/AdySan/ESP8266_WebSockets_NeoPixels/blob/master/data/index.htm
+	//function sendTime(){
+	  	//var ontime = parseInt(document.getElementById('ontime_id').value).toString();  
+		//var offtime = parseInt(document.getElementById('offtime_id').value).toString();   
+		//if(ontime.length < 2) { r = '0' + r; }   
+		//if(offtime.length < 2) { g = '0' + g; }     
+		//if(ontime == 'NaN') {r = '00'; }
+		//if(offtime == 'NaN') {g = '00'; }
+		//var ontime = '+' + ontime;    
+		//console.log('on time: ' + ontime); 
+		//connection.send(ontime);
+		//var offtime = '-' + offtime;    
+		//console.log('off time: ' + offtime); 
+		//connection.send(offtime);
+
+	//}
+
+	//function sendSwitchState(){
+	//	var isChecked = document.getElementById('onoff_switch_id').checked; 
+		//var onoff_switch = 's'
+		//console.log(isChecked);
+		//if (isChecked){
+		//	var state = 'O' + 'N';
+		//	console.log('onoff state: ' + state); 
+		//	connection.send(state);
+		//} else {
+		//var state = 'O' + 'FF';
+		//console.log('onoff state: ' + state); 
+		//connection.send(state);
+		//}
+	//}
+	
+
+    </script>
+    <script type="text/javascript">
+	
+	var connection = new WebSocket('ws://'+location.hostname+':81/', ['arduino']);
+	//var connection = new WebSocket('ws://192.168.4.1:81/', ['arduino']);
+	connection.onopen = function () {  connection.send('Init Conn'); };
+	console.log("temp connection opened");
+	connection.onerror = function (error) { console.log('WebSocket Error ', error); };
+	connection.onmessage = function (ev)
+		{ 
+
+			var json_msg = JSON.parse(ev.data);
+			var msg_type = json_msg.message_type;
+			//console.log('Message Type: ', msg_type);
+
+			switch (msg_type)
+			{
+				case "startup":
+					var timer_state = json_msg.startup_state;
+					var ontime = json_msg.ontime;
+					var offtime = json_msg.offtime;
+					//console.log('Timer State: ', timer_state);
+					//console.log('Setting ON Time: ', ontime);
+					if(timer_state == 1)
+						{
+							
+						}
+
+					if(timer_state == 0)
+						{
+							
+						}
+			
+					if(ontime > 0)
+						{
+							
+						}
+
+					if(offtime > 0)
+						{
+							
+						}
+				case "clock_update":
+					//console.log("Clock Update");
+					//console.log('Time Count :', json_msg.value);
+					//var timer_count = json_msg.value;
+					//document.getElementById("countdown_id").value = timer_count;
+			}
+			
+	 	};
+
+    </script>
+</body>
+
+</html>

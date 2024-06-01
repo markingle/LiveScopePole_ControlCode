@@ -1,0 +1,57 @@
+<!doctype html>
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <title>Counter</title>
+    <meta name="viewport" content="width=device-width">
+    <style type="text/css">
+	
+	#centerapp { 
+		width: 900px; 
+		margin: 0 auto; 
+	}
+	
+    .container {
+        width: 450px;
+        margin: 0 auto;
+        text-align: center;
+    }
+
+    .gauge {
+        width: 450px;
+        height: 450px;
+    }
+	
+	button {
+		position: relative;
+		background-color: #4CAF50;
+		border: none;
+		font-size: 28px;
+		color: #FFFF00;
+		padding: 20px;
+		width: 200px;
+		-webkit-user-select: none;
+		vertical-align: middle;
+		text-align: center;
+		text-decoration: none;
+		overflow: hidden;
+		cursor: pointer;
+	}
+	
+	
+    </style>
+</head>
+
+<body>
+	<div id="centerapp" ><b>PowerDriver Protoype Test App</b></div>
+	<label for="points">SPEED CONTROL</label>
+	</div>
+	<div id="centered" style="margin: 0 auto; width:100px; height:400px;">
+	<input type="range" orient="vertical" name="speed_name" id="speed_id" value="0" min="0" max="1023" onchange="connection.send(this.value)">
+	</div>
+	<script src="jquery-1.12.3.min.js"></script>
+	<script>
+</body>
+
+</html>
