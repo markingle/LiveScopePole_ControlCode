@@ -22,6 +22,56 @@
   		cursor: pointer;
 		}
 
+	input[type="text"]
+		{
+		    font-size:48px;
+		}
+	/* On off button css settings.  URL is https://proto.io/freebies/onoff/ */
+	.onoffswitch {
+    position: relative; width: 160px;
+    -webkit-user-select:none; -moz-user-select:none; -ms-user-select: none;
+	}
+	.onoffswitch-checkbox {
+	    display: none;
+	}
+	.onoffswitch-label {
+	    display: block; overflow: hidden; cursor: pointer;
+	    border: 2px solid #999999; border-radius: 20px;
+	}
+	.onoffswitch-inner {
+	    display: block; width: 200%; margin-left: -100%;
+	    transition: margin 0.3s ease-in 0s;
+	}
+	.onoffswitch-inner:before, .onoffswitch-inner:after {
+	    display: block; float: left; width: 50%; height: 50px; padding: 0; line-height: 50px;
+	    font-size: 40px; color: white; font-family: Trebuchet, Arial, sans-serif; font-weight: bold;
+	    box-sizing: border-box;
+	}
+	.onoffswitch-inner:before {
+	    content: "ON";
+	    padding-left: 2px;
+	    background-color: #34A7C1; color: #FFFFFF;
+	}
+	.onoffswitch-inner:after {
+	    content: "OFF";
+	    padding-right: 5px;
+	    background-color: #EEEEEE; color: #999999;
+	    text-align: right;
+	}
+	.onoffswitch-switch {
+	    display: block; width: 41px; margin: 4.5px;
+	    background: #FFFFFF;
+	    position: absolute; top: 0; bottom: 0;
+	    right: 79px;
+	    border: 2px solid #999999; border-radius: 20px;
+	    transition: all 0.3s ease-in 0s; 
+	}
+	.onoffswitch-checkbox:checked + .onoffswitch-label .onoffswitch-inner {
+	    margin-left: 0;
+	}
+	.onoffswitch-checkbox:checked + .onoffswitch-label .onoffswitch-switch {
+	    right: 0px; 
+	}
 	/*______________________________________________________________________*/
 
     </style>
@@ -71,24 +121,26 @@
 	</tr>
 </table>
 
-<table>
-	<tr>
-		<th>.</th>
-	</tr>
-</table>
-
-<table>
-	<tr>
-		<th>.</th>
-	</tr>
-</table>
-
+<center>
+	<div class="onoffswitch">
+	    <input type="checkbox" name="onoffswitch" class="onoffswitch-checkbox" id="onoff_switch_id" onclick="sendSwitchState()">
+	    <label class="onoffswitch-label" for="onoff_switch_id">
+	        <span class="onoffswitch-inner"></span>
+	        <span class="onoffswitch-switch"></span>
+	    </label>
+	</div>
+</center>
 
 
 <p>Direction Control</p>
 			
-	<input class="button" type="button" id="L" value="LEFT">
-	<input class="button" type="button" id="R" value="RIGHT">
+	<input class="button" type="button" id="L" value="CCW">
+	<input class="button" type="button" id="R" value="CW">
+</p>
+	</div>
+	HEADING:
+  	<input type="text" name="heading" id="heading_id" value="0">
+	</div>
 			
 <script type="text/javascript">
 	
@@ -164,20 +216,21 @@
 
 	//}
 
-	//function sendSwitchState(){
-	//	var isChecked = document.getElementById('onoff_switch_id').checked; 
+function sendSwitchState(){
+		var isChecked = document.getElementById('onoff_switch_id').checked; 
 		//var onoff_switch = 's'
-		//console.log(isChecked);
-		//if (isChecked){
-		//	var state = 'O' + 'N';
-		//	console.log('onoff state: ' + state); 
-		//	connection.send(state);
-		//} else {
-		//var state = 'O' + 'FF';
-		//console.log('onoff state: ' + state); 
-		//connection.send(state);
-		//}
-	//}
+		console.log(isChecked);
+		if (isChecked){
+			var state = 'O' + 'N';
+			console.log('onoff state: ' + state); 
+			connection.send(state);
+		} else {
+		var state = 'O' + 'FF';
+		console.log('onoff state: ' + state); 
+		connection.send(state);
+		}
+	}
+	
 	
 
     </script>
@@ -222,11 +275,11 @@
 						{
 							
 						}
-				case "clock_update":
-					//console.log("Clock Update");
-					//console.log('Time Count :', json_msg.value);
-					//var timer_count = json_msg.value;
-					//document.getElementById("countdown_id").value = timer_count;
+				case "Heading":
+					//console.log("Heading Update");
+					//console.log('Heading :', json_msg.value);
+					var timer_count = json_msg.value;
+					document.getElementById("heading_id").value = timer_count;
 			}
 			
 	 	};

@@ -10,12 +10,31 @@
 #include <movingAvg.h>
 #include <AccelStepper.h>
 
+#include <ArduinoJson.h>
+
 
 //Create a web server
 WebServer server ( 80 );
 
 // Create a Websocket server....
 WebSocketsServer webSocket(81);
+
+// Mode Control (MODE)
+const byte qmc5883l_mode_stby = 0x00;
+const byte qmc5883l_mode_cont = 0x01;
+// Output Data Rate (ODR)
+const byte qmc5883l_odr_10hz  = 0x00;
+const byte qmc5883l_odr_50hz  = 0x04;
+const byte qmc5883l_odr_100hz = 0x08;
+const byte qmc5883l_odr_200hz = 0x0C;
+// Full Scale Range (RNG)
+const byte qmc5883l_rng_2g    = 0x00;
+const byte qmc5883l_rng_8g    = 0x10;
+// Over Sample Ratio (OSR)
+const byte qmc5883l_osr_512   = 0x00;
+const byte qmc5883l_osr_256   = 0x40;
+const byte qmc5883l_osr_128   = 0x80;
+const byte qmc5883l_osr_64    = 0xC0;
 
 
 unsigned int state;
@@ -24,8 +43,6 @@ unsigned int state;
 #define GET_SAMPLE 0x10
 
 #define GET_SAMPLE__WAITING 0x12
-
-const char WiFiAPPSK[] = "Livewell";
 
 #define USE_SERIAL Serial
 #define DBG_OUTPUT_PORT Serial
@@ -40,14 +57,15 @@ int ontime;   //On time setting from mobile web app
 int offtime;  //Off time setting from mobile web app
 
 
-const int DIR = 21;//12 - 21
-const int STEP = 22;//14 - 22
+const int DIR = 27;//12 - 21
+const int STEP = 26;//14 - 22
 const int SLEEP = 25;
 const int M2 = 23;
 const int LEFTBUTTON = 18;
 const int RIGHTBUTTON = 23;
-const int ENABLE = 26; //15 - 26
-const int  steps_per_rev = 200;
+const int ENABLE = 33; //15 - 26
+const int V3V3 = 12;
+const int steps_per_rev = 200;
 
 //These will need to be updated to the GPIO pins for each control circuit.
 int POWER = 13;
@@ -75,6 +93,7 @@ boolean wifi_state = false;
 boolean wifi_client_conn = false;
 boolean left_button_touchstart = false;
 boolean right_button_touchstart = false;
+boolean enable_checkHeading = false;
 int startup_state;
 int ontime_value;  //number of ON minutes store in EEPROM
 int offtime_value; //number of OFF minutes store in EEPROM
@@ -88,10 +107,11 @@ int    LastHeading = 0;   // Register for Last heading
 int    NewHeading  = 0;   // Register for New heading
 int    Movement;   // Register for difference between Last and New heading
 
-QMC5883LCompass compass;
-movingAvg avgHeading(30);
+QMC5883LCompass compass;  //Modify QMC5883LCompass.cpp to set the GPIO pins
+movingAvg avgHeading(50); //was 30
 
-AccelStepper Stepper1(AccelStepper::DRIVER,22,21);  //14,12  
+
+AccelStepper Stepper1(AccelStepper::DRIVER,26,27);  //14,12  
 
 void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t lenght) {
     String text = String((char *) &payload[0]);
@@ -132,11 +152,11 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t lenght
                   if (payload[1] == 'N')
                     {
                       left_button_touchstart = true;
-                      Serial.printf("Left Touchstart Active");
+                      Serial.println("Left Touchstart Active");
                     }
                   else
                   {
-                    Serial.printf("Turn Left OFF");
+                    Serial.println("Turn Left OFF");
                     left_button_touchstart = false;
                     digitalWrite(ENABLE,HIGH);
                   }
@@ -146,17 +166,43 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t lenght
                   if (payload[1] == 'N')
                      {
                       right_button_touchstart = true;
-                      Serial.printf("Touchstart Active");
+                      Serial.println("Touchstart Active");
                     }
                   else
                   {
-                    Serial.printf("Turn right OFF");
+                    Serial.println("Turn right OFF");
                     right_button_touchstart = false;
                     digitalWrite(ENABLE,HIGH);
                   }
                   
                 }
-            
+                
+            if (payload[0] == 'O')
+                {
+                USE_SERIAL.printf("[%u] Timer state event %s\n", num, payload);
+                //Serial.println((char *)&payload);
+                if (payload[1] == 'N')
+                  {
+                    startup_state = 1;
+                    //EEPROM.write(0,startup_state);
+                    //EEPROM.commit();
+                    //byte value = EEPROM.read(0);
+                    Serial.println("Enable Driver " + String(value));
+                    enable_checkHeading = true;
+                     digitalWrite(ENABLE,LOW);
+                  }
+                if (payload[2] == 'F')
+                  {
+                    startup_state = 0;
+                    //EEPROM.write(0,startup_state);
+                    //EEPROM.commit();
+                    //byte value = EEPROM.read(0);
+                    Serial.println("Disable Driver" + String(value));
+                    enable_checkHeading = false;
+                    digitalWrite(ENABLE,HIGH);
+                  }
+                }
+                
          case WStype_BIN:
          {
             /*USE_SERIAL.printf("[%u] get binary lenght: %u\n", num, lenght);
@@ -178,21 +224,25 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t lenght
 }
 
 void rotateLeft(){
-  digitalWrite(DIR, LOW);
-  Serial.println("Button is LOW");
-  digitalWrite(STEP, HIGH);
-  delayMicroseconds(1000);
-  digitalWrite(STEP, LOW);
-  delayMicroseconds(1000);
+  //digitalWrite(DIR, LOW);
+  //Serial.println("Button is LOW");
+  //digitalWrite(STEP, HIGH);
+  //delayMicroseconds(1000);
+  //digitalWrite(STEP, LOW);
+  //delayMicroseconds(1000);
+  //int i = 0;
+  //i = i + 1;
+  Stepper1.runToNewPosition(-10);
 }
 
 void rotateRight(){
-  digitalWrite(DIR,HIGH);
-  Serial.println("Button is HIGH");
-  digitalWrite(STEP, HIGH);
-  delayMicroseconds(1000);
-  digitalWrite(STEP, LOW);
-  delayMicroseconds(1000);
+  //digitalWrite(DIR,HIGH);
+  //Serial.println("Button is HIGH");
+  //digitalWrite(STEP, HIGH);
+  //delayMicroseconds(1000);
+  //digitalWrite(STEP, LOW);
+  //delayMicroseconds(1000);
+  Stepper1.runToNewPosition(10);
 }
 
 void handleRoot() {
@@ -249,7 +299,7 @@ void setupWiFi()
 {
   WiFi.mode(WIFI_AP);
   
-  String AP_NameString = "SeaArk LiveWell";
+  String AP_NameString = "Bird Dog";
 
   char AP_NameChar[AP_NameString.length() + 1];
   memset(AP_NameChar, 0, AP_NameString.length() + 1);
@@ -262,22 +312,97 @@ void setupWiFi()
   digitalWrite(WIFI_CONNECTION, HIGH);
 }
 
+void checkHeading()
+{
+  int heading;
+  int azimuth;  // 0° - 359°
+
+  digitalWrite(SLEEP, HIGH);
+
+  compass.read(); // Read compass values via I2C
+  azimuth   = compass.getAzimuth(); // Calculated from X and Y value 
+
+  heading = map(azimuth,-180, 180, 0, 359);
+
+  int avg = avgHeading.reading(heading);
+  heading_currentreading = heading;
+
+  //Serial.print("Heading = ");
+  //Serial.println(avg);
+  //Serial.println(heading_currentreading);
+
+  NewHeading = heading_currentreading;   // Convert input heading string to int value heading
+  //NewHeading = (NewHeading/2)*2;   // Eliminates 1 degree movements. Reduces movement errors with small movements
+  //Serial.print(NewHeading); 
+
+  //Movement = ((NewHeading + 180 - LastHeading) % 360) - 180;   // Allows movement from North East to North West
+  //if(Movement < -180){Movement = Movement + 360;}   // Allows movement from North West to North East
+
+  if (LastHeading != NewHeading)
+  {
+    if (NewHeading > LastHeading)
+      {
+        if ((NewHeading - LastHeading) <= -1)
+        {
+          NewHeading = LastHeading;
+        }
+      } else {
+        if ((LastHeading - NewHeading) <= 1)
+        {
+          NewHeading = LastHeading;
+        }
+      }  
+  }
+  
+  //Serial.println("New Heading = " + String(NewHeading) + " Last Heading = " + String(LastHeading));
+  Movement = ((NewHeading + 180 - LastHeading) % 360) - 180;   // Allows movement from North East to North West
+
+  //Serial.println("NE>NW Movement = " + String(Movement));
+  if(Movement < -180)
+    {
+      Movement = Movement + 360;
+      Serial.println("NW>NE Movement =" + String(Movement));
+    }   // Allows movement from North West to North East
+  Stepper1.setCurrentPosition(0);   // Zero the motor.
+  Stepper1.setMaxSpeed(MaxSpeed);   // Set Max Speed of Stepper1 
+  Stepper1.setAcceleration(Acceleration );   // Set Acceleration of Stepper1
+
+  Stepper1.move(Movement);   // Set new move to position of Stepper1...increase the multiplier to increase the turn ratio...was 6
+  LastHeading = NewHeading;   // New heading now becomes last heading 
+
+
+  if (enable_checkHeading == true)
+  {
+    while(Stepper1.distanceToGo() != 0)
+      {
+        Serial.println("Movement = " + String(Movement));
+        Stepper1.run();   // Keep updating AccelStepper for current movement
+        //int XInChar = Serial.read();
+        //XInChar = Serial.read();
+      }   // Keep clearing serial buffer- Only allow new heading input once movement finished.   
+  }
+}
 
 void setup()
 {
   Serial.begin(115200);
+  Serial.print("Hello.....");
   pinMode(STEP, OUTPUT);
   pinMode(DIR, OUTPUT);
+  pinMode(V3V3, OUTPUT);
   pinMode(LEFTBUTTON, INPUT);
   pinMode(RIGHTBUTTON, INPUT);
   pinMode(ENABLE, INPUT);
   pinMode(SLEEP, OUTPUT);
   //pinMode(M2, INPUT);
 
-  digitalWrite(ENABLE,LOW);
+  digitalWrite(STEP,LOW);
+  digitalWrite(DIR,LOW);
+  digitalWrite(ENABLE,HIGH);
   digitalWrite(SLEEP, HIGH);  //Take the A998 driver out of sleep mode
   //digitalWrite(M2, LOW);
 
+  
   SPIFFS.begin();
   Serial.println();
   Serial.print("Configuring access point...");
@@ -319,64 +444,25 @@ void setup()
   //  MDNS.addService("http", "tcp", 80);
   //  MDNS.addService("ws", "tcp", 81);
 
+  
   compass.init();
+  compass.setMode(qmc5883l_mode_cont, qmc5883l_odr_200hz, qmc5883l_rng_2g, qmc5883l_osr_512);
+  compass.setSmoothing(30, false);
   compass.setCalibrationOffsets(251.00, -105.00, -584.00);
   compass.setCalibrationScales(0.90, 0.95, 1.18);
 
   avgHeading.begin();
 
+  Stepper1.setMaxSpeed(500); //number of steps per second
+  Stepper1.setAcceleration(100);
+
 }
 
 void loop()
 {
-  int heading;
-  int azimuth;  // 0° - 359°
-
-  digitalWrite(SLEEP, HIGH);
-
-  compass.read(); // Read compass values via I2C
-  azimuth   = compass.getAzimuth(); // Calculated from X and Y value 
-
-  heading = map(azimuth,-180, 180, 0, 360);
-
-  int avg = avgHeading.reading(heading);
-  heading_currentreading = avg;
-
-  Serial.print("Heading = ");
-  Serial.println(avg);
-  Serial.println(heading_currentreading);
-
-  NewHeading = heading_currentreading;   // Convert input heading string to int value heading
-  NewHeading = (NewHeading/2)*2;   // Eliminates 1 degree movements. Reduces movement errors with small movements
-  //Serial.print(NewHeading); 
-
-  //Movement = ((NewHeading + 180 - LastHeading) % 360) - 180;   // Allows movement from North East to North West
-  //if(Movement < -180){Movement = Movement + 360;}   // Allows movement from North West to North East
-
-  Serial.println("New Heading = " + String(NewHeading) + " Last Heading = " + String(LastHeading));
-  Movement = ((NewHeading + 180 - LastHeading) % 360) - 180;   // Allows movement from North East to North West
-
-  Serial.println("NE>NW Movement = " + String(Movement));
-  if(Movement < -180)
-    {
-      Movement = Movement + 360;
-      Serial.println("NW>NE Movement =" + String(Movement));
-    }   // Allows movement from North West to North East
-  Stepper1.setCurrentPosition(0);   // Zero the motor.
-  Stepper1.setMaxSpeed(MaxSpeed);   // Set Max Speed of Stepper1 
-  Stepper1.setAcceleration(Acceleration );   // Set Acceleration of Stepper1
-
-  Stepper1.move(Movement*2);   // Set new move to position of Stepper1
-  LastHeading = NewHeading;   // New heading now becomes last heading 
-  
-  while(Stepper1.distanceToGo() != 0)
-    {
-      Stepper1.run();   // Keep updating AccelStepper for current movement
-      //int XInChar = Serial.read();
-      //XInChar = Serial.read();
-    }   // Keep clearing serial buffer- Only allow new heading input once movement finished.   
-
+  checkHeading();
   left_buttonState = digitalRead(LEFTBUTTON);
+  //left_buttonState = LOW;
   right_buttonState = digitalRead(RIGHTBUTTON);
   enable_buttonState = digitalRead(ENABLE);
 
@@ -387,16 +473,31 @@ void loop()
   }
 
   if ((left_buttonState == HIGH) || (left_button_touchstart == true)) {
-    rotateLeft();
+    //rotateLeft();
+    Stepper1.runToNewPosition(-10);
   }
 
   if ((right_buttonState == HIGH) || (right_button_touchstart == true)){
-    rotateRight();
+    //rotateRight();
+    Stepper1.runToNewPosition(10);
   }
 //delay(250);
 
 
   webSocket.loop();
   server.handleClient();
+
+  JsonDocument clock_time;
+  clock_time["message_type"] = "Heading";
+  clock_time["value"] = LastHeading;
+  //JsonObject time_data = clock_time.createNestedObject();
+  JsonObject time_data = clock_time.add<JsonObject>();
+  
+  
+  String databuf;
+  serializeJson(clock_time, databuf);
+ 
+ 
+  webSocket.sendTXT(0, databuf);
 
 }
