@@ -16,6 +16,7 @@
   		text-align: center;
   		text-decoration: none;
   		-webkit-user-select: none;
+  		touch-action: manipulation;
   		display: inline-block;
   		font-size: 16px;
   		margin: 4px 2px;
@@ -71,6 +72,10 @@
 	}
 	.onoffswitch-checkbox:checked + .onoffswitch-label .onoffswitch-switch {
 	    right: 0px; 
+	}
+
+	.disable-dbl-tap-zoom {
+  		touch-action: manipulation;
 	}
 	/*______________________________________________________________________*/
 
@@ -134,8 +139,8 @@
 
 <p>Direction Control</p>
 			
-	<input class="button" type="button" id="L" value="CCW">
-	<input class="button" type="button" id="R" value="CW">
+	<input class="button" type="button" id="L" value="CW">
+	<input class="button" type="button" id="R" value="CCW">
 </p>
 	</div>
 	HEADING:
